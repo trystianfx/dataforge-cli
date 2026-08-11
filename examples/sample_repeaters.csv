@@ -1,0 +1,7 @@
+callsign,frequency_mhz,offset_mhz,tone_hz,mode,city,state,last_updated
+W7ABC,146.940,-0.6,100.0,FM,Yuma,AZ,2026-01-12
+K7XYZ,147.180,0.6,141.3,FM,Yuma,AZ,2026-02-03
+N7QRP,442.100,5.0,103.5,DMR,Yuma,AZ,2026-03-19
+KJ7LMN,224.980,-1.6,,FM,Phoenix,AZ,2025-11-02
+W7DEF,53.070,-1.7,67.0,FM,Tucson,AZ,2025-12-28
+KC7GHI,927.9875,-25.0,141.3,FM,Yuma,AZ,2026-04-05

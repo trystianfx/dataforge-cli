@@ -1,0 +1,9 @@
+{% extends "base.html.j2" %}
+{% block content %}
+  {% for c in charts %}
+  <div class="card">
+    <h2>{{ c.title }}</h2>
+    {{ c.html | safe }}
+  </div>
+  {% endfor %}
+{% endblock %}

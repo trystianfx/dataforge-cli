@@ -1,0 +1,16 @@
+{% extends "base.html.j2" %}
+{% block content %}
+  <div class="card">
+    <h2>Dataset overview</h2>
+    <div class="stat-grid">
+      <div class="stat"><div class="label">Rows</div><div class="value">{{ profile.rows }}</div></div>
+      <div class="stat"><div class="label">Columns</div><div class="value">{{ profile.columns }}</div></div>
+      <div class="stat"><div class="label">Duplicate rows</div><div class="value">{{ profile.duplicate_rows }}</div></div>
+      <div class="stat"><div class="label">Memory (bytes)</div><div class="value">{{ profile.memory_usage_bytes }}</div></div>
+    </div>
+  </div>
+  <div class="card">
+    <h2>Preview</h2>
+    {{ table_html | safe }}
+  </div>
+{% endblock %}

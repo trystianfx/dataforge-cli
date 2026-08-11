@@ -1,0 +1,23 @@
+{% extends "base.html.j2" %}
+{% block content %}
+  <div class="card">
+    <h2>Inferred schema</h2>
+    <p>{{ schema.column_count }} fields across {{ schema.row_count }} rows.</p>
+    <table class="dataforge-table">
+      <thead>
+        <tr><th>Field</th><th>Type</th><th>Nullable</th><th>Unique</th><th>Sample values</th></tr>
+      </thead>
+      <tbody>
+        {% for f in schema.fields %}
+        <tr>
+          <td><code>{{ f.name }}</code></td>
+          <td>{{ f.type }}</td>
+          <td>{{ "yes" if f.nullable else "no" }}</td>
+          <td>{{ f.unique_count }}</td>
+          <td>{{ f.sample_values | join(", ") }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endblock %}
