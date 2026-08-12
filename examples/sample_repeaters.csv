@@ -1,7 +1,21 @@
-callsign,frequency_mhz,offset_mhz,tone_hz,mode,city,state,last_updated
-W7ABC,146.940,-0.6,100.0,FM,Yuma,AZ,2026-01-12
-K7XYZ,147.180,0.6,141.3,FM,Yuma,AZ,2026-02-03
-N7QRP,442.100,5.0,103.5,DMR,Yuma,AZ,2026-03-19
-KJ7LMN,224.980,-1.6,,FM,Phoenix,AZ,2025-11-02
-W7DEF,53.070,-1.7,67.0,FM,Tucson,AZ,2025-12-28
-KC7GHI,927.9875,-25.0,141.3,FM,Yuma,AZ,2026-04-05
+callsign,frequency_mhz,offset_mhz,tone_hz,mode,city,region,country,source,verified_date
+WW7PSR,146.960,-0.600,103.5,FM,Seattle,WA,USA,RepeaterBook,2026-08-11
+WW7MST,146.900,-0.600,103.5,FM,Seattle,WA,USA,RepeaterBook,2026-08-11
+W7EX,146.940,-0.600,162.2,FM,Phoenix,AZ,USA,RadioReference,2026-08-11
+W7ARA,146.640,-0.600,162.2,FM,Phoenix,AZ,USA,RadioReference,2026-08-11
+W6TRW,145.320,-0.600,114.8,FM,Redondo Beach (Los Angeles),CA,USA,RadioReference,2026-08-11
+AA6DP,147.090,0.600,,FM,Catalina Island (Los Angeles),CA,USA,RadioReference,2026-08-11
+W5FC,146.880,-0.600,110.9,FM,Dallas,TX,USA,RadioReference,2026-08-11
+K5RWK,147.120,0.600,110.9,FM,Dallas,TX,USA,RadioReference,2026-08-11
+WA9ORC,146.760,-0.600,107.2,FM,Chicago,IL,USA,Chicago FM Club,2026-08-11
+NS9RC,442.725,5.000,114.8,FM,Chicago,IL,USA,North Shore Radio Club,2026-08-11
+W4DOC,146.820,-0.600,146.2,FM,Atlanta,GA,USA,RadioReference,2026-08-11
+K4CLJ,146.970,-0.600,100.0,FM,Atlanta,GA,USA,RadioReference,2026-08-11
+KC2GOW,147.315,0.600,118.8,FM,New York City (Staten Island),NY,USA,RadioReference,2026-08-11
+WB2HWW,29.660,-0.100,114.8,FM,New York City,NY,USA,RadioReference,2026-08-11
+KI4IJQ,146.700,-0.600,100.0,FM,Miami,FL,USA,RadioReference,2026-08-11
+AE4WE,146.895,-0.600,100.0,FM,Miami,FL,USA,RadioReference,2026-08-11
+VE7RPT,146.940,-0.600,136.5,FM,Vancouver (North Vancouver),BC,Canada,RepeaterBook,2026-08-11
+VE7RBY,145.350,-0.600,127.3,FM,Vancouver (Burnaby),BC,Canada,BCARCC,2026-08-11
+GB3NL,145.775,-0.600,82.5,FM,London (North),England,United Kingdom,RepeaterBook,2026-08-11
+GB3WL,145.625,-0.600,,FM,London (Ealing),England,United Kingdom,UK Repeater Directory,2026-08-11

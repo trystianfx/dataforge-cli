@@ -9,3 +9,5 @@ requests>=2.31
 python-dateutil>=2.9
 # optional, heavier: enables `dataforge profile --engine ydata`
 # ydata-profiling>=4.6
+# optional: enables `dataforge schema --engine frictionless` and validation
+# frictionless>=5.15

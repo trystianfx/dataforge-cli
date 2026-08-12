@@ -51,11 +51,35 @@ def schema(
     source: str,
     out: Optional[Path] = typer.Option(None, help="Output file (.json or .yaml)"),
     dataset_name: Optional[str] = typer.Option(None, help="Name to embed in the schema"),
+    engine: str = typer.Option(
+        "heuristic", help="Schema engine: 'heuristic' (default, no extra deps) or 'frictionless'"
+    ),
+    validate: bool = typer.Option(
+        False, "--validate", help="Also run Frictionless validation (requires --engine frictionless)"
+    ),
 ) -> None:
-    """Infer a schema for the dataset and print or save it."""
-    df = load_dataset(source)
+    """Infer a schema for the dataset and print or save it.
+
+    --engine frictionless delegates to the Frictionless Framework
+    (Table Schema spec) instead of dataforge's built-in heuristics -- see
+    dataforge.schema_frictionless and the README "Schema engines" section.
+    Requires: pip install dataforge-cli[frictionless]
+    """
     name = dataset_name or Path(source).stem
-    result = infer_schema(df, dataset_name=name)
+
+    if engine == "frictionless":
+        from dataforge.schema_frictionless import infer_schema_frictionless, validate_source
+
+        result = infer_schema_frictionless(source, dataset_name=name)
+        if validate:
+            report = validate_source(source)
+            console.print("[bold]Frictionless validation report:[/]")
+            console.print_json(json.dumps(report, default=str))
+    elif engine == "heuristic":
+        df = load_dataset(source)
+        result = infer_schema(df, dataset_name=name)
+    else:
+        raise typer.BadParameter("engine must be 'heuristic' or 'frictionless'")
 
     if out is None:
         console.print_json(json.dumps(result, default=str))
@@ -118,6 +142,9 @@ def build(
     chart_x: Optional[str] = typer.Option(None, help="Column for a chart x-axis (optional)"),
     chart_y: Optional[str] = typer.Option(None, help="Column for a chart y-axis (optional)"),
     chart_kind: ChartKind = typer.Option("bar", help="Chart type if chart_x is given"),
+    schema_engine: str = typer.Option(
+        "heuristic", help="Schema engine: 'heuristic' (default) or 'frictionless'"
+    ),
 ) -> None:
     """Run the full pipeline: ingest -> schema -> profile -> (optional chart)
     -> CSV/JSON/YAML/HTML outputs -> rendered HTML site.
@@ -127,7 +154,13 @@ def build(
     out_dir = ensure_dir(out_dir)
     data_dir = ensure_dir(out_dir / "data")
 
-    schema_result = infer_schema(df, dataset_name=name)
+    if schema_engine == "frictionless":
+        from dataforge.schema_frictionless import infer_schema_frictionless
+
+        schema_result = infer_schema_frictionless(source, dataset_name=name)
+    else:
+        schema_result = infer_schema(df, dataset_name=name)
+
     profile_result = generate_profile(df, dataset_name=name)
 
     to_csv(df, data_dir / f"{name}.csv")

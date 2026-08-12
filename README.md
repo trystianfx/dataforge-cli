@@ -36,7 +36,7 @@ a WordPress post. That's what `dataforge` is:
 | Stage | What it does | Backed by |
 |---|---|---|
 | Ingest | Load CSV, TSV, JSON, YAML, Excel, Parquet, or a remote URL into a normalized `DataFrame` | `pandas`, `requests` |
-| Schema | Infer field types (integer, number, boolean, date/datetime, categorical, email, url, string), nullability, cardinality, and basic constraints | custom, Table-Schema-inspired (`dataforge/schema.py`) |
+| Schema | Infer field types (integer, number, boolean, date/datetime, categorical, email, url, string), nullability, cardinality, and basic constraints | built-in heuristic engine, or the Frictionless Framework / Table Schema engine (`--engine frictionless`) |
 | Profile | Row/column counts, missingness, duplicates, per-column descriptive stats | `pandas` (optional: `ydata-profiling` for a full interactive report) |
 | Export | Write CSV, JSON, YAML, and HTML `<table>` fragments | `pandas`, `PyYAML` |
 | Chart | Render bar/line/scatter/pie/histogram/box charts as embeddable HTML | `Plotly` |
@@ -109,6 +109,15 @@ This pulls in `ydata-profiling` for the full interactive HTML profiling
 report path (heavier install, brings in scipy/statsmodels/visualization
 deps).
 
+### Optional: Frictionless Framework schema engine
+
+```bash
+pip install -e ".[frictionless]"
+```
+
+Enables `dataforge schema --engine frictionless` and `--validate` (see
+"Schema engines" below).
+
 ### Verify the install
 
 ```bash
@@ -118,8 +127,13 @@ dataforge build examples/sample_repeaters.csv --out-dir output/repeaters --chart
 
 ## Quick start
 
-A sample dataset is included at `examples/sample_repeaters.csv` (amateur
-radio repeater listings, because of course).
+A sample dataset is included at `examples/sample_repeaters.csv`: 20 real,
+publicly-listed amateur radio repeaters across ten metro areas (Seattle,
+Phoenix, Los Angeles, Dallas, Chicago, Atlanta, New York City, and Miami in
+the US, plus Vancouver BC and London, England) -- compiled by hand from
+public ham radio directories (ARRL club pages, RadioReference, RepeaterBook,
+and individual club websites) as of August 2026. See "About the sample
+dataset" below for sourcing and accuracy notes.
 
 **1. Preview a dataset:**
 
@@ -171,6 +185,36 @@ output/repeaters/
 Open `output/repeaters/index.html` in a browser -- no server required, the
 pages are fully static (Plotly loads from a CDN by default).
 
+## Schema engines
+
+`dataforge schema` and `dataforge build` support two interchangeable
+schema-inference engines, selected with `--engine` / `--schema-engine`:
+
+| Engine | Flag | Dependencies | What it gives you |
+|---|---|---|---|
+| Heuristic (default) | `--engine heuristic` | none (built in) | Fast, pandas-based type/constraint guesses; good enough for previewing a dataset and driving the HTML schema page |
+| Frictionless | `--engine frictionless` | `pip install dataforge-cli[frictionless]` | Standards-compliant Table Schema output (portable outside dataforge), broader encoding/format detection during describe, and real row/cell-level **validation** via `--validate` |
+
+```bash
+# Standards-compliant Table Schema + validation report
+dataforge schema examples/sample_repeaters.csv \
+  --engine frictionless --validate --out output/repeaters.schema.json
+
+# Full pipeline using the Frictionless engine for the schema stage
+dataforge build examples/sample_repeaters.csv \
+  --out-dir output/repeaters --schema-engine frictionless
+```
+
+The Frictionless integration lives in `src/dataforge/schema_frictionless.py`
+and normalizes Frictionless's `Resource.schema` output into the same field
+shape the heuristic engine produces, so `schema.html` renders identically
+regardless of which engine generated the data. It is implemented against
+the documented [Frictionless Framework v5 API](https://framework.frictionlessdata.io/)
+(`frictionless.describe`, `frictionless.validate`) with defensive fallbacks
+for shape differences across Frictionless versions -- if you hit a mismatch
+on your installed version, please open an issue with the version and
+traceback.
+
 ## Publishing to WordPress
 
 `dataforge` does not require a live WordPress site to build HTML output --
@@ -188,7 +232,7 @@ export WP_APP_PASSWORD="xxxx xxxx xxxx xxxx xxxx xxxx"
 dataforge wp-push output/repeaters/index.html \
   --site https://your-site.example.com \
   --username your-wp-username \
-  --title "Yuma Repeater Directory" \
+  --title "US & Global Metro Repeater Directory" \
   --status draft
 ```
 
@@ -202,10 +246,10 @@ publish manually. Use `--post-type pages` to create a Page instead, or
 | Command | Purpose |
 |---|---|
 | `dataforge ingest SOURCE` | Load and preview a dataset |
-| `dataforge schema SOURCE [--out FILE]` | Infer schema, print or save as JSON/YAML |
+| `dataforge schema SOURCE [--out FILE] [--engine heuristic\|frictionless] [--validate]` | Infer schema, print or save as JSON/YAML |
 | `dataforge profile SOURCE [--out FILE]` | Analyze dataset, print or save stats as JSON/YAML |
 | `dataforge chart SOURCE --x COL [--y COL] [--kind KIND]` | Render one chart to standalone HTML |
-| `dataforge build SOURCE --out-dir DIR [--chart-x COL --chart-y COL]` | Full pipeline: ingest -> schema -> profile -> export -> HTML site |
+| `dataforge build SOURCE --out-dir DIR [--chart-x COL --chart-y COL] [--schema-engine heuristic\|frictionless]` | Full pipeline: ingest -> schema -> profile -> export -> HTML site |
 | `dataforge wp-push FILE --site URL --username USER --title TITLE` | Push a rendered HTML file to WordPress as a draft |
 
 Run `dataforge --help` or `dataforge COMMAND --help` for full option lists.
@@ -215,26 +259,47 @@ Run `dataforge --help` or `dataforge COMMAND --help` for full option lists.
 ```
 dataforge-cli/
   src/dataforge/
-    cli.py            # Typer CLI entry point, wires all stages together
-    ingest.py          # Load CSV/TSV/JSON/YAML/Excel/Parquet -> DataFrame
-    schema.py           # Type + constraint inference -> portable schema dict
-    profile.py           # Summary stats; optional ydata-profiling bridge
-    export.py             # CSV/JSON/YAML/HTML-table writers
-    charts.py              # Plotly chart HTML generation
-    render.py               # Jinja2 site assembly
-    wp_publish.py             # WordPress REST API push (draft-first, no deletes)
-    templates/                 # base.html.j2, summary.html.j2, schema.html.j2, chart.html.j2
-    utils.py                    # logging, slugify, dir helpers
+    cli.py                    # Typer CLI entry point, wires all stages together
+    ingest.py                  # Load CSV/TSV/JSON/YAML/Excel/Parquet -> DataFrame
+    schema.py                   # Heuristic type + constraint inference -> portable schema dict
+    schema_frictionless.py       # Frictionless Framework engine (opt-in, Table Schema + validation)
+    profile.py                    # Summary stats; optional ydata-profiling bridge
+    export.py                      # CSV/JSON/YAML/HTML-table writers
+    charts.py                       # Plotly chart HTML generation
+    render.py                        # Jinja2 site assembly
+    wp_publish.py                     # WordPress REST API push (draft-first, no deletes)
+    templates/                         # base.html.j2, summary.html.j2, schema.html.j2, chart.html.j2
+    utils.py                            # logging, slugify, dir helpers
   examples/
-    sample_repeaters.csv          # sample dataset used in the quick start & tests
-  tests/                            # pytest suite covering ingest/schema/export
-  dataforge_entry.py                 # freeze-friendly entry point for PyInstaller/Nuitka/cx_Freeze
-  dataforge.spec                      # PyInstaller build spec (bundles Jinja2 templates)
-  setup_cxfreeze.py                    # cx_Freeze build script
+    sample_repeaters.csv                  # sample dataset used in the quick start & tests
+  tests/                                    # pytest suite covering ingest/schema/export
+  dataforge_entry.py                         # freeze-friendly entry point for PyInstaller/Nuitka/cx_Freeze
+  dataforge.spec                              # PyInstaller build spec (bundles Jinja2 templates)
+  setup_cxfreeze.py                            # cx_Freeze build script
   pyproject.toml
   requirements.txt
   README.md
 ```
+
+## About the sample dataset
+
+`examples/sample_repeaters.csv` contains 20 amateur radio repeater listings
+across ten metro areas: Seattle, Phoenix, Los Angeles, Dallas, Chicago,
+Atlanta, New York City, Miami, Vancouver (BC, Canada), and London (England).
+Each row was compiled by hand from public, ham-radio-community-maintained
+directories intended for operator use -- ARRL club pages, RadioReference,
+RepeaterBook, and individual repeater club websites (e.g. Chicago FM Club,
+W5FC/Dallas ARC, BCFMCA, UK Repeater Directory) -- with a `source` column
+noting where each entry came from and a `verified_date` marking when it was
+checked against that source. No scraping or automated data collection was
+used; this is a manual, one-time compilation for demonstrating schema
+diversity (nulls, categoricals, mixed numeric ranges, international data)
+in this project's examples and tests.
+
+**This is illustrative sample data, not a live feed.** Repeater status,
+tones, and ownership change over time -- always verify current status via
+[RepeaterBook](https://www.repeaterbook.com/) or your local club before
+using any frequency operationally.
 
 ## Design notes
 
@@ -246,10 +311,11 @@ dataforge-cli/
   `include_plotlyjs="cdn"` to keep generated pages small; pass
   `include_plotlyjs=True` in code if you need charts to work fully
   offline (e.g. an air-gapped ham shack server).
-- **Schema inference is heuristic, not authoritative.** Type detection
-  (email/url/categorical/datetime) is based on sampling and simple regex
-  checks -- always spot-check `schema.html` against a dataset you know
-  before trusting it for anything downstream like validation gating.
+- **Schema inference is heuristic by default, not authoritative.** The
+  built-in engine's type detection (email/url/categorical/datetime) is
+  based on sampling and simple regex checks. Switch to `--engine
+  frictionless` for standards-compliant, validated schemas when that
+  matters more than zero extra dependencies.
 - **No lock-in.** Every stage is a plain function that takes/returns
   pandas DataFrames or plain dicts, so you can use `dataforge` as a
   library (`from dataforge.schema import infer_schema`) in a notebook or
@@ -257,30 +323,30 @@ dataforge-cli/
 
 ## Roadmap
 
-These are natural next steps, roughly in priority order:
+Frictionless Framework integration (previously roadmap item 1) has landed
+as the `--engine frictionless` option described above. Remaining items,
+roughly in priority order:
 
-1. **Swap in Frictionless Framework** (`frictionless-py`) for ingestion +
-   schema inference to get proper Table Schema compliance, constraint
-   validation, and multi-table/relational support for free.
-2. **`ydata-profiling` HTML report command** -- a `dataforge profile
+1. **`ydata-profiling` HTML report command** -- a `dataforge profile
    --engine ydata --out report.html` path that emits the full interactive
    profiling report instead of the lightweight JSON summary.
-3. **More chart types & auto-suggestion** -- given a schema, suggest
+2. **More chart types & auto-suggestion** -- given a schema, suggest
    sensible chart pairings (e.g. categorical x numeric -> bar;
    datetime x numeric -> line) instead of requiring `--chart-x/--chart-y`.
-4. **WordPress shortcode companion plugin** -- a tiny PHP plugin
+3. **WordPress shortcode companion plugin** -- a tiny PHP plugin
    (`[dataforge_chart id="..."]`) that fetches generated JSON/chart HTML
    from a REST endpoint, so charts stay live-updating instead of being
    pasted in as static HTML.
-5. **Multi-dataset / relational schema support** -- handle datasets that
+4. **Multi-dataset / relational schema support** -- handle datasets that
    arrive as multiple related tables (foreign keys) rather than one flat
-   file.
-6. **Web upload front-end** -- a small FastAPI + HTMX app wrapping this
+   file. Frictionless's `Package` concept is a natural fit here.
+5. **Web upload front-end** -- a small FastAPI + HTMX app wrapping this
    CLI so non-CLI users can drag-and-drop a file and get a rendered site
    back, deployable via Docker on self-hosted infrastructure.
-7. **Data-quality gating** -- integrate Great Expectations so `build` can
-   fail (or flag) when incoming data violates the previously-saved
-   schema, useful for recurring/scheduled ingestion jobs.
+6. **Data-quality gating** -- use Frictionless's `validate()` (already
+   wired up for ad-hoc use via `--validate`) as a hard gate in `build`, so
+   the pipeline can fail or flag when incoming data violates a
+   previously-saved schema -- useful for recurring/scheduled ingestion jobs.
 
 ## Building a standalone executable
 
@@ -382,6 +448,9 @@ python setup_cxfreeze.py bdist_dmg
 ```bash
 pytest
 ```
+
+The Frictionless-engine test is automatically skipped if the `frictionless`
+extra isn't installed, so the base test suite has no extra dependencies.
 
 ## License
 

@@ -4,13 +4,13 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "dataforge-cli"
-version = "0.1.0"
+version = "0.2.0"
 description = "Ingest datasets of varying structure, infer schemas, analyze/profile them, and render structured outputs (CSV/JSON/YAML/HTML tables/charts) into HTML templates for static sites, PHP, or WordPress."
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
 authors = [{ name = "Trystian FX" }]
-keywords = ["data", "schema", "csv", "json", "yaml", "html", "wordpress", "cli"]
+keywords = ["data", "schema", "csv", "json", "yaml", "html", "wordpress", "cli", "frictionless"]
 classifiers = [
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: MIT License",
@@ -31,6 +31,7 @@ dependencies = [
 
 [project.optional-dependencies]
 profiling = ["ydata-profiling>=4.6"]
+frictionless = ["frictionless>=5.15"]
 dev = ["pytest>=8.0", "pytest-cov>=5.0", "black>=24.0", "ruff>=0.4"]
 
 [project.scripts]
