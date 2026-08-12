@@ -249,10 +249,30 @@ publish manually. Use `--post-type pages` to create a Page instead, or
 | `dataforge schema SOURCE [--out FILE] [--engine heuristic\|frictionless] [--validate]` | Infer schema, print or save as JSON/YAML |
 | `dataforge profile SOURCE [--out FILE]` | Analyze dataset, print or save stats as JSON/YAML |
 | `dataforge chart SOURCE --x COL [--y COL] [--kind KIND]` | Render one chart to standalone HTML |
-| `dataforge build SOURCE --out-dir DIR [--chart-x COL --chart-y COL] [--schema-engine heuristic\|frictionless]` | Full pipeline: ingest -> schema -> profile -> export -> HTML site |
+| `dataforge build SOURCE --out-dir DIR [--chart-x COL --chart-y COL] [--schema-engine heuristic\|frictionless] [--layout table\|cards\|grid]` | Full pipeline: ingest -> schema -> profile -> export -> HTML site |
 | `dataforge wp-push FILE --site URL --username USER --title TITLE` | Push a rendered HTML file to WordPress as a draft |
 
 Run `dataforge --help` or `dataforge COMMAND --help` for full option lists.
+
+## Documentation
+
+Comprehensive per-stage docs -- full option/flag reference, the Python API
+for using each module as a library, and working examples -- live in
+[`docs/`](docs/):
+
+| Stage | Doc |
+|---|---|
+| Ingest | [docs/ingest.md](docs/ingest.md) |
+| Schema | [docs/schema.md](docs/schema.md) |
+| Profile | [docs/profile.md](docs/profile.md) |
+| Export | [docs/export.md](docs/export.md) |
+| Charts | [docs/charts.md](docs/charts.md) |
+| Render | [docs/render.md](docs/render.md) |
+| Publish (WordPress) | [docs/wp_publish.md](docs/wp_publish.md) |
+
+Each page documents dataforge's own wrapper functions and CLI flags first,
+with a link to the underlying open-source library's documentation at the
+bottom for anything beyond what dataforge exposes.
 
 ## Project layout
 
@@ -272,6 +292,7 @@ dataforge-cli/
     utils.py                            # logging, slugify, dir helpers
   examples/
     sample_repeaters.csv                  # sample dataset used in the quick start & tests
+  docs/                                     # per-stage usage docs (see "Documentation" above)
   tests/                                    # pytest suite covering ingest/schema/export
   dataforge_entry.py                         # freeze-friendly entry point for PyInstaller/Nuitka/cx_Freeze
   dataforge.spec                              # PyInstaller build spec (bundles Jinja2 templates)
@@ -324,7 +345,9 @@ using any frequency operationally.
 ## Roadmap
 
 Frictionless Framework integration (previously roadmap item 1) has landed
-as the `--engine frictionless` option described above. Remaining items,
+as the `--engine frictionless` option described above. Responsive HTML
+output (table/cards/grid layouts) has also landed -- see "Building a
+standalone executable" and the Design notes above. Remaining items,
 roughly in priority order:
 
 1. **`ydata-profiling` HTML report command** -- a `dataforge profile
@@ -347,6 +370,11 @@ roughly in priority order:
    wired up for ad-hoc use via `--validate`) as a hard gate in `build`, so
    the pipeline can fail or flag when incoming data violates a
    previously-saved schema -- useful for recurring/scheduled ingestion jobs.
+7. **Auto-generated API reference site** -- wire up `mkdocs-material` +
+   `mkdocstrings` to publish a versioned documentation site (via GitHub
+   Pages) generated directly from the module docstrings, so the API
+   reference can never drift out of sync with the code the way hand-written
+   docs can.
 
 ## Building a standalone executable
 
