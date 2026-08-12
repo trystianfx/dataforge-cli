@@ -20,7 +20,7 @@ from rich.console import Console
 from rich.table import Table
 
 from dataforge.charts import ChartKind, build_chart_html
-from dataforge.export import df_to_html_table, dict_to_json, dict_to_yaml, to_csv
+from dataforge.export import df_to_html_table, df_to_records, dict_to_json, dict_to_yaml, to_csv
 from dataforge.ingest import load_dataset
 from dataforge.profile import generate_profile
 from dataforge.render import build_site
@@ -127,7 +127,8 @@ def chart(
     df = load_dataset(source)
     html = build_chart_html(df, x=x, y=y, kind=kind, title=title)
     out.write_text(
-        f"<!DOCTYPE html><html><head><meta charset='utf-8'></head>"
+        f"<!DOCTYPE html><html><head><meta charset='utf-8'>"
+        f"<meta name='viewport' content='width=device-width, initial-scale=1'></head>"
         f"<body>{html}</body></html>",
         encoding="utf-8",
     )
@@ -145,10 +146,22 @@ def build(
     schema_engine: str = typer.Option(
         "heuristic", help="Schema engine: 'heuristic' (default) or 'frictionless'"
     ),
+    layout: str = typer.Option(
+        "table",
+        help=(
+            "Dataset preview layout on the generated summary page: "
+            "'table' (scrollable HTML table, default), 'cards' (Flexbox card per row), "
+            "or 'grid' (CSS Grid card per row). Use 'cards'/'grid' for wide datasets "
+            "(many columns) to avoid horizontal scrolling."
+        ),
+    ),
 ) -> None:
     """Run the full pipeline: ingest -> schema -> profile -> (optional chart)
     -> CSV/JSON/YAML/HTML outputs -> rendered HTML site.
     """
+    if layout not in ("table", "cards", "grid"):
+        raise typer.BadParameter("layout must be 'table', 'cards', or 'grid'")
+
     df = load_dataset(source)
     name = dataset_name or slugify(Path(source).stem)
     out_dir = ensure_dir(out_dir)
@@ -169,6 +182,7 @@ def build(
     dict_to_json(profile_result, data_dir / f"{name}.profile.json")
 
     table_html = df_to_html_table(df)
+    records = df_to_records(df) if layout != "table" else None
 
     charts = []
     if chart_x:
@@ -182,12 +196,15 @@ def build(
         profile=profile_result,
         charts=charts,
         out_dir=out_dir,
+        layout=layout,
+        records=records,
     )
 
     console.print(f"[bold green]Site built in[/] {out_dir}")
     for label, path in written.items():
         console.print(f"  - {label}: {path}")
     console.print(f"  - data files: {data_dir}")
+    console.print(f"  - preview layout: {layout}")
 
 
 @app.command("wp-push")

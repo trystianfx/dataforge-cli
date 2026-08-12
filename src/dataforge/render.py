@@ -12,6 +12,7 @@ from jinja2 import Environment, FileSystemLoader, select_autoescape
 from dataforge.utils import ensure_dir
 
 TEMPLATES_DIR = Path(__file__).parent / "templates"
+VALID_LAYOUTS = ("table", "cards", "grid")
 
 
 def _env() -> Environment:
@@ -37,10 +38,30 @@ def build_site(
     profile: dict[str, Any],
     charts: list[dict[str, str]] | None,
     out_dir: str | Path,
+    layout: str = "table",
+    records: list[dict[str, Any]] | None = None,
 ) -> dict[str, Path]:
     """Render summary.html, schema.html, and (optionally) charts.html into
     out_dir and return a dict of {page_name: written_path}.
+
+    `layout` controls how the dataset preview on summary.html is rendered:
+      - "table" (default): a single scrollable HTML table -- best for
+        datasets with few enough columns to read as rows, or when you want
+        a familiar spreadsheet-like view. Wide tables get a horizontal
+        scroll container rather than squeezing/wrapping columns.
+      - "cards": a Flexbox card per row, wrapping naturally at any
+        viewport width -- best for wide datasets on mobile.
+      - "grid": a CSS Grid card per row (auto-fit columns) -- similar to
+        "cards" but with more even card sizing on desktop.
+
+    `records` (list of dicts) is required when layout is "cards" or
+    "grid"; pass the output of `dataforge.export.df_to_records(df)`.
     """
+    if layout not in VALID_LAYOUTS:
+        raise ValueError(f"layout must be one of {VALID_LAYOUTS}, got {layout!r}")
+    if layout != "table" and records is None:
+        raise ValueError(f"layout={layout!r} requires `records` (see dataforge.export.df_to_records)")
+
     out_dir = ensure_dir(out_dir)
     charts = charts or []
 
@@ -53,6 +74,8 @@ def build_site(
             "table_html": table_html,
             "profile": profile,
             "has_charts": bool(charts),
+            "layout": layout,
+            "records": records or [],
         },
     )
     summary_path = out_dir / "index.html"

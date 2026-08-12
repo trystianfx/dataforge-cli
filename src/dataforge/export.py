@@ -45,3 +45,12 @@ def df_to_html_table(df: pd.DataFrame, *, table_id: str = "dataforge-table", max
         na_rep="",
         escape=True,
     )
+
+
+def df_to_records(df: pd.DataFrame, *, max_rows: int | None = 200) -> list[dict[str, Any]]:
+    """Return the DataFrame as a list of plain dicts (NaN -> None), for
+    layouts (cards/grid) that render each row as its own element rather
+    than a wide <table>. Column order is preserved.
+    """
+    view = df.head(max_rows) if max_rows else df
+    return view.where(pd.notna(view), None).to_dict(orient="records")

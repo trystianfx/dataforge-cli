@@ -7,23 +7,139 @@
   <style>
     :root { --accent: #2563eb; --bg: #0f172a; --panel: #1e293b; --text: #e2e8f0; --muted: #94a3b8; }
     * { box-sizing: border-box; }
-    body { margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; background: var(--bg); color: var(--text); }
-    header { padding: 1.5rem 2rem; background: var(--panel); border-bottom: 1px solid #334155; }
-    header h1 { margin: 0; font-size: 1.4rem; }
-    nav { margin-top: 0.75rem; }
-    nav a { color: var(--muted); text-decoration: none; margin-right: 1.25rem; font-size: 0.9rem; }
-    nav a:hover { color: var(--accent); }
-    main { padding: 2rem; max-width: 1100px; margin: 0 auto; }
-    .card { background: var(--panel); border: 1px solid #334155; border-radius: 10px; padding: 1.25rem 1.5rem; margin-bottom: 1.5rem; }
-    table.dataforge-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
-    table.dataforge-table th, table.dataforge-table td { border-bottom: 1px solid #334155; padding: 0.5rem 0.6rem; text-align: left; }
-    table.dataforge-table th { color: var(--accent); position: sticky; top: 0; background: var(--panel); }
+    html { -webkit-text-size-adjust: 100%; }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      font-size: clamp(14px, 1vw + 0.5rem, 16px);
+    }
+    header { padding: clamp(1rem, 2vw, 1.5rem) clamp(1rem, 4vw, 2rem); background: var(--panel); border-bottom: 1px solid #334155; }
+    header h1 { margin: 0; font-size: clamp(1.1rem, 1.2vw + 0.8rem, 1.4rem); word-break: break-word; }
+    nav { margin-top: 0.75rem; display: flex; flex-wrap: wrap; gap: 0.25rem 1.25rem; }
+    nav a { color: var(--muted); text-decoration: none; font-size: 0.9rem; }
+    nav a:hover, nav a:focus-visible { color: var(--accent); }
+
+    /* Main content area: fluid width instead of a hard 1100px cap, so
+       wide tables/card grids have real room on desktop but never
+       overflow small viewports. */
+    main {
+      padding: clamp(1rem, 3vw, 2rem);
+      max-width: min(1600px, 96vw);
+      margin: 0 auto;
+    }
+    .card { background: var(--panel); border: 1px solid #334155; border-radius: 10px; padding: clamp(1rem, 2vw, 1.5rem); margin-bottom: 1.5rem; overflow: hidden; }
+
+    /* Responsive table pattern: the table itself is never squeezed
+       below its natural column widths -- instead the wrapper scrolls
+       horizontally. This is the fix for many-column datasets (e.g. 10+
+       columns) overflowing/wrapping awkwardly inside a fixed-width card. */
+    .table-scroll {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      border-radius: 8px;
+      border: 1px solid #334155;
+    }
+    table.dataforge-table {
+      width: 100%;
+      min-width: max-content;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+      white-space: nowrap;
+    }
+    table.dataforge-table th, table.dataforge-table td {
+      border-bottom: 1px solid #334155;
+      padding: 0.5rem 0.75rem;
+      text-align: left;
+    }
+    table.dataforge-table th {
+      color: var(--accent);
+      position: sticky;
+      top: 0;
+      background: var(--panel);
+      z-index: 2;
+    }
+    /* Sticky first column doubles as a visual anchor while scrolling
+       right through a wide table -- common RWD table technique. */
+    table.dataforge-table th:first-child, table.dataforge-table td:first-child {
+      position: sticky;
+      left: 0;
+      background: var(--panel);
+      z-index: 1;
+      box-shadow: 2px 0 0 #334155;
+    }
+    table.dataforge-table th:first-child { z-index: 3; }
+    /* Columns that legitimately hold long free text (e.g. schema.html's
+       "Sample values") should wrap instead of forcing extreme scroll. */
+    table.dataforge-table td.wrap, table.dataforge-table th.wrap { white-space: normal; }
+
     .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 1rem; }
     .stat { background: #0f172a; border: 1px solid #334155; border-radius: 8px; padding: 0.75rem 1rem; }
     .stat .label { color: var(--muted); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.04em; }
-    .stat .value { font-size: 1.4rem; font-weight: 600; }
+    .stat .value { font-size: 1.4rem; font-weight: 600; word-break: break-word; }
+
+    /* Flexbox card layout: each record becomes a flexible card that
+       wraps naturally at any viewport width -- no horizontal scroll
+       needed, at the cost of vertical space vs. a table. */
+    .record-cards.layout-flex {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+    .record-cards.layout-flex .record-card { flex: 1 1 260px; }
+
+    /* CSS Grid card layout: same card markup, auto-fit grid columns so
+       card count per row adapts to available width. */
+    .record-cards.layout-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 1rem;
+    }
+
+    .record-card {
+      background: #0f172a;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      padding: 0.85rem 1rem;
+      min-width: 0;
+    }
+    .record-card .record-card-title {
+      font-weight: 600;
+      color: var(--accent);
+      margin-bottom: 0.5rem;
+      word-break: break-word;
+    }
+    .record-card .field-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 0.75rem;
+      padding: 0.3rem 0;
+      border-bottom: 1px solid #1e293b;
+    }
+    .record-card .field-row:last-child { border-bottom: none; }
+    .record-card .field-label {
+      color: var(--muted);
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      flex: 0 0 auto;
+    }
+    .record-card .field-value {
+      font-weight: 500;
+      text-align: right;
+      word-break: break-word;
+      overflow-wrap: anywhere;
+    }
+
     footer { text-align: center; padding: 2rem; color: var(--muted); font-size: 0.8rem; }
-    code { background: #0f172a; padding: 0.1rem 0.4rem; border-radius: 4px; }
+    code { background: #0f172a; padding: 0.1rem 0.4rem; border-radius: 4px; word-break: break-word; }
+
+    @media (max-width: 640px) {
+      .stat-grid { grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); }
+      table.dataforge-table { font-size: 0.78rem; }
+      table.dataforge-table th, table.dataforge-table td { padding: 0.4rem 0.5rem; }
+    }
   </style>
 </head>
 <body>

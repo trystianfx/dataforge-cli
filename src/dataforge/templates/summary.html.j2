@@ -11,6 +11,28 @@
   </div>
   <div class="card">
     <h2>Preview</h2>
-    {{ table_html | safe }}
+    {% if layout == "table" %}
+      <div class="table-scroll">
+        {{ table_html | safe }}
+      </div>
+      <p style="color: var(--muted); font-size: 0.8rem; margin-top: 0.75rem;">
+        Wide table? Scroll horizontally, or rebuild with <code>--layout cards</code> /
+        <code>--layout grid</code> for a card-based, no-scroll view.
+      </p>
+    {% else %}
+      <div class="record-cards layout-{{ 'flex' if layout == 'cards' else 'grid' }}">
+        {% for record in records %}
+        <div class="record-card">
+          <div class="record-card-title">{{ record.values() | list | first }}</div>
+          {% for key, value in record.items() %}
+          <div class="field-row">
+            <span class="field-label">{{ key }}</span>
+            <span class="field-value">{{ value if value is not none else "" }}</span>
+          </div>
+          {% endfor %}
+        </div>
+        {% endfor %}
+      </div>
+    {% endif %}
   </div>
 {% endblock %}
