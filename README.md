@@ -45,18 +45,75 @@ a WordPress post. That's what `dataforge` is:
 
 ## Installation
 
+### Linux
+
 ```bash
+# Debian/Ubuntu/Raspbian: make sure Python 3.10+ and venv are available
+sudo apt update && sudo apt install -y python3 python3-venv python3-pip git
+
 git clone https://github.com/trystianfx/dataforge-cli.git
 cd dataforge-cli
-python -m venv .venv
-source .venv/bin/activate        # Windows: .venv\Scripts\activate
+python3 -m venv .venv
+source .venv/bin/activate
+pip install --upgrade pip
 pip install -e ".[dev]"
 ```
 
-Optional, heavier dependency for full statistical profiling reports:
+### macOS
+
+```bash
+# Requires Homebrew (https://brew.sh) for a modern Python 3
+brew install python git
+
+git clone https://github.com/trystianfx/dataforge-cli.git
+cd dataforge-cli
+python3 -m venv .venv
+source .venv/bin/activate
+pip install --upgrade pip
+pip install -e ".[dev]"
+```
+
+### Windows
+
+Use PowerShell. Install Python 3.10+ from [python.org](https://www.python.org/downloads/)
+(check **"Add python.exe to PATH"** during setup) or via `winget`:
+
+```powershell
+winget install Python.Python.3.12
+```
+
+Then, in a new PowerShell window:
+
+```powershell
+git clone https://github.com/trystianfx/dataforge-cli.git
+cd dataforge-cli
+python -m venv .venv
+.venv\Scripts\Activate.ps1
+pip install --upgrade pip
+pip install -e ".[dev]"
+```
+
+If PowerShell blocks the activation script with an execution-policy error,
+run `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` once, then retry.
+Command Prompt users can activate instead with `.venv\Scripts\activate.bat`.
+
+### Optional: full profiling engine
+
+On any OS, once the venv above is active:
 
 ```bash
 pip install -e ".[profiling]"
+```
+
+This pulls in `ydata-profiling` for the full interactive HTML profiling
+report path (heavier install, brings in scipy/statsmodels/visualization
+deps).
+
+### Verify the install
+
+```bash
+dataforge --help
+dataforge build examples/sample_repeaters.csv --out-dir output/repeaters --chart-x city --chart-y frequency_mhz
 ```
 
 ## Quick start
@@ -171,6 +228,9 @@ dataforge-cli/
   examples/
     sample_repeaters.csv          # sample dataset used in the quick start & tests
   tests/                            # pytest suite covering ingest/schema/export
+  dataforge_entry.py                 # freeze-friendly entry point for PyInstaller/Nuitka/cx_Freeze
+  dataforge.spec                      # PyInstaller build spec (bundles Jinja2 templates)
+  setup_cxfreeze.py                    # cx_Freeze build script
   pyproject.toml
   requirements.txt
   README.md
@@ -221,6 +281,101 @@ These are natural next steps, roughly in priority order:
 7. **Data-quality gating** -- integrate Great Expectations so `build` can
    fail (or flag) when incoming data violates the previously-saved
    schema, useful for recurring/scheduled ingestion jobs.
+
+## Building a standalone executable
+
+For distributing `dataforge` to a machine without Python installed (or
+just to have one self-contained binary), three freezing tools are
+supported. All three build against `dataforge_entry.py` at the repo root
+(a thin wrapper around the Typer app) rather than the installed
+`console_scripts` entry point, and **none of them cross-compile** -- build
+on the same OS you intend to run the executable on.
+
+| Tool | Output | Notes |
+|---|---|---|
+| PyInstaller | one-file or one-folder | Fastest to set up, widest package compatibility |
+| Nuitka | one-file or one-folder | Compiles Python to C; slower build, better performance & harder to reverse-engineer |
+| cx_Freeze | one-folder only (+ optional installer) | Can also produce a Windows `.msi` or macOS `.app`/`.dmg` |
+
+Install whichever tool you want inside the project's virtual environment
+first, e.g. `pip install pyinstaller`.
+
+### PyInstaller (all platforms)
+
+A ready-to-use spec file is included at `dataforge.spec` -- it bundles the
+Jinja2 template directory, which PyInstaller cannot discover automatically.
+
+```bash
+pip install pyinstaller
+pyinstaller dataforge.spec
+```
+
+The executable lands in `dist/dataforge` (`dist/dataforge.exe` on Windows).
+To build without the spec file (simpler, but you must pass `--add-data`
+yourself so templates are bundled):
+
+```bash
+# Linux/macOS
+pyinstaller --onefile --add-data "src/dataforge/templates:dataforge/templates" dataforge_entry.py
+
+# Windows (note the semicolon separator instead of a colon)
+pyinstaller --onefile --add-data "src\dataforge\templates;dataforge\templates" dataforge_entry.py
+```
+
+### Nuitka (all platforms)
+
+Nuitka compiles to C and produces the most tamper-resistant binary of the
+three, at the cost of longer build times.
+
+```bash
+pip install nuitka
+
+# One-folder build (recommended first attempt -- easier to debug missing imports)
+python -m nuitka --standalone --follow-imports \
+  --include-data-dir=src/dataforge/templates=dataforge/templates \
+  dataforge_entry.py
+
+# One-file build once the standalone build works cleanly
+python -m nuitka --onefile --follow-imports \
+  --include-data-dir=src/dataforge/templates=dataforge/templates \
+  dataforge_entry.py
+```
+
+The one-folder build lands in `dataforge_entry.dist/`; the one-file build
+produces a single `dataforge_entry.bin` (Linux/macOS) or
+`dataforge_entry.exe` (Windows) in the current directory. If pandas/plotly
+submodules go missing at runtime, add `--follow-import-to=pandas` /
+`--follow-import-to=plotly` explicitly.
+
+### cx_Freeze (all platforms, no one-file option)
+
+A setup script is included at `setup_cxfreeze.py`.
+
+```bash
+pip install cx_Freeze
+python setup_cxfreeze.py build_exe
+```
+
+The output folder is `build/exe.<platform>.<pyver>/` containing the
+executable plus all dependencies -- ship the whole folder together.
+Windows and macOS users can additionally build an installer:
+
+```bash
+# Windows only -- produces an .msi installer
+python setup_cxfreeze.py bdist_msi
+
+# macOS only -- produces a .app bundle or a .dmg image
+python setup_cxfreeze.py bdist_mac
+python setup_cxfreeze.py bdist_dmg
+```
+
+### Choosing between them
+
+- Want the quickest working binary today: **PyInstaller**.
+- Want the smallest attack surface for reverse engineering, and can
+  tolerate a slower build: **Nuitka**.
+- Want a Windows `.msi` or macOS `.app`/`.dmg` installer out of the box,
+  and don't need a single-file binary: **cx_Freeze**.
 
 ## Testing
 
