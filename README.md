@@ -1,5 +1,7 @@
 # dataforge-cli
 
+[![Tests](https://github.com/trystianfx/dataforge-cli/actions/workflows/tests.yml/badge.svg)](https://github.com/trystianfx/dataforge-cli/actions/workflows/tests.yml)
+
 **Ingest any dataset. Infer its schema. Analyze it. Publish it to HTML,
 PHP, or WordPress.**
 
@@ -477,8 +479,45 @@ python setup_cxfreeze.py bdist_dmg
 pytest
 ```
 
-The Frictionless-engine test is automatically skipped if the `frictionless`
-extra isn't installed, so the base test suite has no extra dependencies.
+The Frictionless-engine and ydata-profiling tests are automatically
+skipped if their respective extras aren't installed, so the base test
+suite has no extra dependencies.
+
+### Test harness
+
+The test suite is layered to catch different classes of bugs:
+
+| Layer | File(s) | Catches |
+|---|---|---|
+| Unit tests | `tests/test_ingest.py`, `test_schema.py`, `test_profile.py`, `test_charts.py`, `test_export.py` | Logic bugs in individual functions |
+| CLI integration tests | `tests/test_cli.py` | Bugs in flag parsing/validation, invoked through `typer.testing.CliRunner` against the real `dataforge.cli.app` -- not just calling the underlying functions directly |
+| Dependency-floor CI job | `.github/workflows/tests.yml` (`dependency-floor` job), `tox.ini` (`dependency-floor` env) | Bugs that only appear on the *minimum* dependency versions `pyproject.toml` actually declares, not just whatever pip resolves to latest |
+
+That last layer exists because of a real incident: the CLI crashed
+entirely on Typer versions below 0.19.0 (see [issue #3](https://github.com/trystianfx/dataforge-cli/issues/3))
+because a parameter type Typer only recently learned to support was used
+in `cli.py`, while `pyproject.toml` still claimed `typer>=0.12` was
+sufficient. Every previous manual check had called the underlying
+functions directly rather than actually invoking the CLI through Typer's
+dispatch layer, so nothing caught it until an unrelated `--help` audit
+happened to run `CliRunner` for the first time. The dependency-floor job
+pins every dependency to the exact minimum version declared in
+`pyproject.toml` and runs `dataforge --help` plus the full suite against
+it, specifically so a version-floor mismatch like that fails CI instead
+of shipping.
+
+Run the same matrix locally with [tox](https://tox.wiki/):
+
+```bash
+pip install tox
+tox                        # full matrix: py3.10-3.12, dependency floor, extras
+tox -e dependency-floor    # just the minimum-version reproduction
+tox -e extras              # full suite with frictionless + profiling installed
+```
+
+CI (`.github/workflows/tests.yml`) runs on every push and pull request to
+`main` across Ubuntu/Windows/macOS x Python 3.10-3.12, plus the dedicated
+dependency-floor and optional-extras jobs described above.
 
 ## Acknowledgments
 
