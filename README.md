@@ -480,6 +480,29 @@ pytest
 The Frictionless-engine test is automatically skipped if the `frictionless`
 extra isn't installed, so the base test suite has no extra dependencies.
 
+## Acknowledgments
+
+dataforge-cli is really just glue code -- the real work is done by the
+open-source projects it stands on, built and maintained by people who
+mostly do it as volunteers, for free, for the benefit of everyone
+downstream from them. This tool wouldn't exist without them:
+
+- [**pandas**](https://github.com/pandas-dev/pandas) -- the DataFrame engine underneath every stage of the pipeline
+- [**Frictionless Framework**](https://github.com/frictionlessdata/frictionless-py) (Open Knowledge Foundation) -- the Table Schema spec and validation engine behind `--engine frictionless`
+- [**ydata-profiling**](https://github.com/ydataai/ydata-profiling) -- the full interactive profiling report option
+- [**Plotly**](https://github.com/plotly/plotly.py) -- every chart this tool renders
+- [**Jinja2**](https://github.com/pallets/jinja) (Pallets) -- the HTML templating that turns data into pages
+- [**Typer**](https://github.com/fastapi/typer) -- the CLI framework this entire tool is built on
+- [**Rich**](https://github.com/Textualize/rich) -- the readable terminal output
+- [**Requests**](https://github.com/psf/requests) -- remote dataset fetching and the WordPress publishing bridge
+- [**PyYAML**](https://github.com/yaml/pyyaml), [**openpyxl**](https://foss.heptapod.net/openpyxl/openpyxl), and [**python-dateutil**](https://github.com/dateutil/dateutil) -- quietly handling YAML, Excel, and date parsing throughout
+
+Thank you to the maintainers, contributors, and volunteers behind every
+one of these projects. Full license details and attribution for each are
+in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) -- please keep that
+file alongside any redistributed build of this tool (see "Building a
+standalone executable" above).
+
 ## License
 
 MIT -- see [LICENSE](LICENSE).
