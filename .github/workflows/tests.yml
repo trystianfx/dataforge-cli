@@ -31,7 +31,7 @@ jobs:
         run: pytest -v
 
   dependency-floor:
-    name: Dependency floor (typer==0.12.0, minimum pyproject.toml versions)
+    name: Dependency floor (typer==0.12.1, minimum pyproject.toml versions)
     runs-on: ubuntu-latest
     # This job exists specifically because of GitHub issue #3: the CLI
     # crashed on any Typer version below 0.19.0 despite pyproject.toml
@@ -39,6 +39,16 @@ jobs:
     # workflow installs whatever the *latest* compatible dependency
     # versions are, which would NOT have caught that bug -- only pinning
     # to the actual declared floor and running the suite against it does.
+    #
+    # Note: pins are installed BEFORE dataforge-cli itself (with
+    # `--no-deps` on the editable install), rather than installing latest
+    # dependencies first and downgrading in place. Typer 0.12.0 in
+    # particular has a known upstream packaging bug where an in-place
+    # upgrade/downgrade to that exact version corrupts the install
+    # (fastapi/typer#790, fixed in 0.12.1) -- see issue #4. Installing
+    # pinned versions into a clean environment from the start avoids that
+    # whole class of "upgrading between versions in one venv" bug, not
+    # just this one instance of it.
     steps:
       - uses: actions/checkout@v4
 
@@ -47,11 +57,10 @@ jobs:
         with:
           python-version: "3.10"
 
-      - name: Install dataforge-cli with pinned minimum dependency versions
+      - name: Install pinned minimum dependency versions (before dataforge-cli itself)
         run: |
-          pip install -e ".[dev]"
           pip install \
-            "typer==0.12.0" \
+            "typer==0.12.1" \
             "pandas==2.1.0" \
             "PyYAML==6.0" \
             "Jinja2==3.1.0" \
@@ -59,7 +68,11 @@ jobs:
             "plotly==5.20.0" \
             "openpyxl==3.1.0" \
             "requests==2.31.0" \
-            "python-dateutil==2.9.0"
+            "python-dateutil==2.9.0" \
+            "pytest>=8.0" "pytest-cov>=5.0"
+
+      - name: Install dataforge-cli without re-resolving dependencies
+        run: pip install -e . --no-deps
 
       - name: Verify the CLI actually starts (regression guard for #3)
         run: dataforge --help

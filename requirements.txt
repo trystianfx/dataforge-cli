@@ -1,7 +1,9 @@
 pandas>=2.1
 PyYAML>=6.0
 Jinja2>=3.1
-typer>=0.12
+# typer==0.12.0 has a known upstream packaging bug (fastapi/typer#790);
+# 0.12.1 is the first safe version in the 0.12.x line. See issue #4.
+typer>=0.12.1
 rich>=13.7
 plotly>=5.20
 openpyxl>=3.1
