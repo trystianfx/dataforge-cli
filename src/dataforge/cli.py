@@ -7,6 +7,14 @@ Pipeline stages exposed as subcommands:
   chart    -> render a single Plotly chart to HTML
   build    -> run the full pipeline and emit an HTML site (summary/schema/charts)
   wp-push  -> push a rendered HTML page to WordPress as a draft post
+
+Note on parameter types: CLI options here deliberately use plain `str`
+(with manual validation against a tuple of valid values, raising
+typer.BadParameter) rather than typing.Literal. Typer only added support
+for typing.Literal as a CLI parameter type in version 0.19.0 (2025-09-20);
+using it here would silently break the entire CLI (not just the affected
+command) on any earlier Typer version, despite pyproject.toml's
+`typer>=0.12` floor. See GitHub issue #3 for the full writeup.
 """
 from __future__ import annotations
 
@@ -19,7 +27,7 @@ import yaml
 from rich.console import Console
 from rich.table import Table
 
-from dataforge.charts import ChartKind, build_chart_html
+from dataforge.charts import VALID_CHART_KINDS, build_chart_html
 from dataforge.export import df_to_html_table, df_to_records, dict_to_json, dict_to_yaml, to_csv
 from dataforge.ingest import load_dataset
 from dataforge.profile import generate_profile
@@ -30,6 +38,9 @@ from dataforge.wp_publish import WordPressConfig, push_html_as_post
 
 app = typer.Typer(help="Ingest, analyze, and publish datasets to HTML/WordPress.")
 console = Console()
+
+VALID_SCHEMA_ENGINES = ("heuristic", "frictionless")
+VALID_LAYOUTS = ("table", "cards", "grid")
 
 
 @app.command()
@@ -65,6 +76,9 @@ def schema(
     dataforge.schema_frictionless and the README "Schema engines" section.
     Requires: pip install dataforge-cli[frictionless]
     """
+    if engine not in VALID_SCHEMA_ENGINES:
+        raise typer.BadParameter(f"engine must be one of {VALID_SCHEMA_ENGINES}, got {engine!r}")
+
     name = dataset_name or Path(source).stem
 
     if engine == "frictionless":
@@ -75,11 +89,9 @@ def schema(
             report = validate_source(source)
             console.print("[bold]Frictionless validation report:[/]")
             console.print_json(json.dumps(report, default=str))
-    elif engine == "heuristic":
+    else:
         df = load_dataset(source)
         result = infer_schema(df, dataset_name=name)
-    else:
-        raise typer.BadParameter("engine must be 'heuristic' or 'frictionless'")
 
     if out is None:
         console.print_json(json.dumps(result, default=str))
@@ -119,11 +131,14 @@ def chart(
     source: str,
     x: str = typer.Option(..., help="Column for the x-axis / categories"),
     y: Optional[str] = typer.Option(None, help="Column for the y-axis / values"),
-    kind: ChartKind = typer.Option("bar", help="bar | line | scatter | pie | histogram | box"),
+    kind: str = typer.Option("bar", help="bar | line | scatter | pie | histogram | box"),
     out: Path = typer.Option(Path("chart.html"), help="Output HTML file"),
     title: Optional[str] = typer.Option(None, help="Chart title"),
 ) -> None:
     """Render a single chart from the dataset to a standalone HTML file."""
+    if kind not in VALID_CHART_KINDS:
+        raise typer.BadParameter(f"kind must be one of {VALID_CHART_KINDS}, got {kind!r}")
+
     df = load_dataset(source)
     html = build_chart_html(df, x=x, y=y, kind=kind, title=title)
     out.write_text(
@@ -142,7 +157,7 @@ def build(
     dataset_name: Optional[str] = typer.Option(None, help="Name to embed in outputs"),
     chart_x: Optional[str] = typer.Option(None, help="Column for a chart x-axis (optional)"),
     chart_y: Optional[str] = typer.Option(None, help="Column for a chart y-axis (optional)"),
-    chart_kind: ChartKind = typer.Option("bar", help="Chart type if chart_x is given"),
+    chart_kind: str = typer.Option("bar", help="Chart type if chart_x is given"),
     schema_engine: str = typer.Option(
         "heuristic", help="Schema engine: 'heuristic' (default) or 'frictionless'"
     ),
@@ -159,8 +174,12 @@ def build(
     """Run the full pipeline: ingest -> schema -> profile -> (optional chart)
     -> CSV/JSON/YAML/HTML outputs -> rendered HTML site.
     """
-    if layout not in ("table", "cards", "grid"):
-        raise typer.BadParameter("layout must be 'table', 'cards', or 'grid'")
+    if layout not in VALID_LAYOUTS:
+        raise typer.BadParameter(f"layout must be one of {VALID_LAYOUTS}, got {layout!r}")
+    if schema_engine not in VALID_SCHEMA_ENGINES:
+        raise typer.BadParameter(f"schema-engine must be one of {VALID_SCHEMA_ENGINES}, got {schema_engine!r}")
+    if chart_x and chart_kind not in VALID_CHART_KINDS:
+        raise typer.BadParameter(f"chart-kind must be one of {VALID_CHART_KINDS}, got {chart_kind!r}")
 
     df = load_dataset(source)
     name = dataset_name or slugify(Path(source).stem)

@@ -10,6 +10,7 @@ import pandas as pd
 import plotly.express as px
 
 ChartKind = Literal["bar", "line", "scatter", "pie", "histogram", "box"]
+VALID_CHART_KINDS = ("bar", "line", "scatter", "pie", "histogram", "box")
 
 
 class ChartError(Exception):
@@ -34,6 +35,8 @@ def build_chart_html(
         raise ChartError(f"Column '{x}' not found in dataset")
     if y is not None and y not in df.columns:
         raise ChartError(f"Column '{y}' not found in dataset")
+    if kind not in VALID_CHART_KINDS:
+        raise ChartError(f"kind must be one of {VALID_CHART_KINDS}, got {kind!r}")
 
     title = title or f"{kind.title()} chart: {x}" + (f" vs {y}" if y else "")
 
