@@ -31,7 +31,7 @@ jobs:
         run: pytest -v
 
   dependency-floor:
-    name: Dependency floor (typer==0.12.1, minimum pyproject.toml versions)
+    name: Dependency floor (typer==0.12.1, numpy 1.x, minimum pyproject.toml versions)
     runs-on: ubuntu-latest
     # This job exists specifically because of GitHub issue #3: the CLI
     # crashed on any Typer version below 0.19.0 despite pyproject.toml
@@ -40,15 +40,19 @@ jobs:
     # versions are, which would NOT have caught that bug -- only pinning
     # to the actual declared floor and running the suite against it does.
     #
-    # Note: pins are installed BEFORE dataforge-cli itself (with
-    # `--no-deps` on the editable install), rather than installing latest
-    # dependencies first and downgrading in place. Typer 0.12.0 in
-    # particular has a known upstream packaging bug where an in-place
-    # upgrade/downgrade to that exact version corrupts the install
-    # (fastapi/typer#790, fixed in 0.12.1) -- see issue #4. Installing
-    # pinned versions into a clean environment from the start avoids that
-    # whole class of "upgrading between versions in one venv" bug, not
-    # just this one instance of it.
+    # Two follow-up incidents while building this job (see #4 and #5):
+    #   - typer==0.12.0 itself has a known upstream packaging bug
+    #     (fastapi/typer#790) that corrupts an in-place upgrade to that
+    #     exact version; fixed in 0.12.1. Pins are installed into a clean
+    #     environment BEFORE dataforge-cli itself (`--no-deps` on the
+    #     editable install) to avoid in-place-upgrade bugs like this one
+    #     entirely, not just this specific instance.
+    #   - pandas==2.1.0 predates NumPy 2.0 (June 2024) and its compiled
+    #     extensions use the NumPy 1.x C ABI. Pinning pandas without also
+    #     pinning numpy let pip resolve NumPy 2.x transitively, causing a
+    #     binary-incompatibility crash ("numpy.dtype size changed").
+    #     numpy is pinned explicitly here even though dataforge-cli has
+    #     no direct dependency on it.
     steps:
       - uses: actions/checkout@v4
 
@@ -61,6 +65,7 @@ jobs:
         run: |
           pip install \
             "typer==0.12.1" \
+            "numpy==1.26.4" \
             "pandas==2.1.0" \
             "PyYAML==6.0" \
             "Jinja2==3.1.0" \
